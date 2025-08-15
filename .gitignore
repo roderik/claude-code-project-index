@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.bak
+*_old.py
+*_backup.py
+
+# Test outputs
+test_*.py
+debug_*.py
+
+# Project Index files (created in user projects)
+PROJECT_INDEX.json
+
+# Settings backups
+settings.json.backup*
+
+# Runtime configuration
+.python_cmd
