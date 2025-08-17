@@ -13,7 +13,7 @@ if [[ ! -f "$PYTHON_SCRIPT" ]]; then
     echo "   Missing: $PYTHON_SCRIPT"
     echo ""
     echo "To reinstall, run:"
-    echo "   curl -fsSL https://raw.githubusercontent.com/ericbuess/claude-code-project-index/main/install.sh | bash"
+    echo "   curl -fsSL https://raw.githubusercontent.com/roderik/claude-code-project-index/main/install.sh | bash"
     exit 1
 fi
 

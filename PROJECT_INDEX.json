@@ -1,5 +1,5 @@
 {
-  "indexed_at": "2025-08-15T17:08:41.385779",
+  "indexed_at": "2025-08-17T17:16:43.396988",
   "root": ".",
   "project_structure": {
     "type": "tree",
@@ -31,26 +31,94 @@
     "scripts": "Build and utility scripts"
   },
   "stats": {
-    "total_files": 11,
-    "total_directories": 2,
+    "total_files": 10,
+    "total_directories": 1,
     "fully_parsed": {
       "python": 5,
       "shell": 1
     },
     "listed_only": {
-      "shell": 4,
-      "json": 1
+      "shell": 4
     },
     "markdown_files": 1
   },
   "files": {
+    "uninstall.sh": {
+      "language": "shell",
+      "parsed": false
+    },
     "install.sh": {
       "language": "shell",
       "parsed": false
     },
-    "uninstall.sh": {
+    "scripts/detect_external_changes.py": {
+      "language": "python",
+      "parsed": true,
+      "imports": [
+        "os",
+        "json",
+        "pathlib",
+        "datetime",
+        "subprocess",
+        "sys"
+      ],
+      "functions": {
+        "get_file_mtime": {
+          "doc": "Get file modification time as timestamp.",
+          "signature": "(file_path)",
+          "called_by": [
+            "detect_external_changes"
+          ]
+        },
+        "detect_external_changes": {
+          "calls": [
+            "get_file_mtime"
+          ],
+          "signature": "(index_path, project_root)"
+        },
+        "check_git_changes": "(project_root)"
+      },
+      "classes": {},
+      "call_graph": {}
+    },
+    "scripts/update_index.py": {
+      "language": "python",
+      "parsed": true,
+      "imports": [
+        "json",
+        "sys",
+        "os",
+        "pathlib",
+        "datetime",
+        "index_utils"
+      ],
+      "functions": {
+        "find_index_utils": {
+          "doc": "Find index_utils.py in the project directory or system location.",
+          "signature": "()"
+        },
+        "update_file_in_index": {
+          "doc": "Update a single file's entry in the enhanced index.",
+          "signature": "(index_path, file_path, project_root)",
+          "called_by": [
+            "main"
+          ]
+        },
+        "main": {
+          "doc": "Process PostToolUse hook input and update index.",
+          "calls": [
+            "update_file_in_index"
+          ],
+          "signature": "()"
+        }
+      },
+      "classes": {},
+      "call_graph": {}
+    },
+    "scripts/project-index-helper.sh": {
       "language": "shell",
-      "parsed": false
+      "parsed": false,
+      "purpose": "Utility functions"
     },
     "scripts/reindex_if_needed.py": {
       "language": "python",
@@ -115,124 +183,6 @@
             "check_structural_changes",
             "count_hook_updates",
             "run_reindex"
-          ],
-          "signature": "()"
-        }
-      },
-      "classes": {},
-      "call_graph": {}
-    },
-    "scripts/find_python.sh": {
-      "language": "shell",
-      "parsed": true,
-      "functions": {
-        "find_python": "()"
-      },
-      "call_graph": {}
-    },
-    "scripts/project_index.py": {
-      "language": "python",
-      "parsed": true,
-      "imports": [
-        "json",
-        "os",
-        "re",
-        "datetime",
-        "pathlib",
-        "typing",
-        "index_utils",
-        "sys"
-      ],
-      "functions": {
-        "generate_tree_structure": {
-          "doc": "Generate a compact ASCII tree representation of the directory structure.",
-          "calls": [
-            "add_tree_level",
-            "should_include_dir"
-          ],
-          "signature": "(root_path: Path, max_depth: int = MAX_TREE_DEPTH) -> List[str]",
-          "called_by": [
-            "build_index"
-          ]
-        },
-        "build_index": {
-          "doc": "Build the enhanced index with architectural awareness.",
-          "calls": [
-            "generate_tree_structure"
-          ],
-          "signature": "(root_dir: str) -> Tuple[Dict, int]",
-          "called_by": [
-            "main"
-          ]
-        },
-        "compress_index_if_needed": {
-          "doc": "Compress index if it exceeds size limit.",
-          "signature": "(index: Dict) -> Dict",
-          "called_by": [
-            "main"
-          ]
-        },
-        "print_summary": {
-          "doc": "Print a helpful summary of what was indexed.",
-          "signature": "(index: Dict, skipped_count: int)",
-          "called_by": [
-            "main"
-          ]
-        },
-        "main": {
-          "doc": "Run the enhanced indexer.",
-          "calls": [
-            "build_index",
-            "compress_index_if_needed",
-            "print_summary"
-          ],
-          "signature": "()"
-        }
-      },
-      "classes": {},
-      "constants": {
-        "MAX_FILES": "number",
-        "MAX_INDEX_SIZE": "value",
-        "MAX_TREE_DEPTH": "number"
-      },
-      "call_graph": {}
-    },
-    "scripts/run_python.sh": {
-      "language": "shell",
-      "parsed": false
-    },
-    "scripts/project-index-helper.sh": {
-      "language": "shell",
-      "parsed": false,
-      "purpose": "Utility functions"
-    },
-    "scripts/update_index.py": {
-      "language": "python",
-      "parsed": true,
-      "imports": [
-        "json",
-        "sys",
-        "os",
-        "pathlib",
-        "datetime",
-        "index_utils"
-      ],
-      "functions": {
-        "find_index_utils": {
-          "doc": "Find index_utils.py in the project directory or system location.",
-          "signature": "()"
-        },
-        "update_file_in_index": {
-          "doc": "Update a single file's entry in the enhanced index.",
-          "signature": "(index_path, file_path, project_root)",
-          "called_by": [
-            "main"
-          ]
-        },
-        "main": {
-          "doc": "Process PostToolUse hook input and update index.",
-          "calls": [
-            "update_file_in_index"
           ],
           "signature": "()"
         }
@@ -356,59 +306,92 @@
       },
       "call_graph": {}
     },
-    "scripts/detect_external_changes.py": {
+    "scripts/run_python.sh": {
+      "language": "shell",
+      "parsed": false
+    },
+    "scripts/find_python.sh": {
+      "language": "shell",
+      "parsed": true,
+      "functions": {
+        "find_python": "()"
+      },
+      "call_graph": {}
+    },
+    "scripts/project_index.py": {
       "language": "python",
       "parsed": true,
       "imports": [
-        "os",
         "json",
-        "pathlib",
+        "os",
+        "re",
         "datetime",
-        "subprocess",
+        "pathlib",
+        "typing",
+        "index_utils",
         "sys"
       ],
       "functions": {
-        "get_file_mtime": {
-          "doc": "Get file modification time as timestamp.",
-          "signature": "(file_path)",
+        "generate_tree_structure": {
+          "doc": "Generate a compact ASCII tree representation of the directory structure.",
+          "calls": [
+            "add_tree_level",
+            "should_include_dir"
+          ],
+          "signature": "(root_path: Path, max_depth: int = MAX_TREE_DEPTH) -> List[str]",
           "called_by": [
-            "detect_external_changes"
+            "build_index"
           ]
         },
-        "detect_external_changes": {
+        "build_index": {
+          "doc": "Build the enhanced index with architectural awareness.",
           "calls": [
-            "get_file_mtime"
+            "generate_tree_structure"
           ],
-          "signature": "(index_path, project_root)"
+          "signature": "(root_dir: str) -> Tuple[Dict, int]",
+          "called_by": [
+            "main"
+          ]
         },
-        "check_git_changes": "(project_root)"
+        "compress_index_if_needed": {
+          "signature": "(index: Dict) -> Dict",
+          "called_by": [
+            "main"
+          ]
+        },
+        "print_summary": {
+          "doc": "Print a helpful summary of what was indexed.",
+          "signature": "(index: Dict, skipped_count: int)",
+          "called_by": [
+            "main"
+          ]
+        },
+        "main": {
+          "doc": "Run the enhanced indexer.",
+          "calls": [
+            "build_index",
+            "compress_index_if_needed",
+            "print_summary"
+          ],
+          "signature": "()"
+        }
       },
       "classes": {},
+      "constants": {
+        "MAX_FILES": "number",
+        "MAX_INDEX_SIZE": "value",
+        "MAX_TREE_DEPTH": "number"
+      },
       "call_graph": {}
-    },
-    ".claude/settings.local.json": {
-      "language": "json",
-      "parsed": false,
-      "purpose": "Configuration"
     }
   },
   "dependency_graph": {
-    "scripts/reindex_if_needed.py": [
-      "json",
-      "sys",
+    "scripts/detect_external_changes.py": [
       "os",
-      "subprocess",
+      "json",
       "pathlib",
-      "datetime"
-    ],
-    "scripts/project_index.py": [
-      "json",
-      "os",
-      "re",
       "datetime",
-      "pathlib",
-      "typing",
-      "index_utils",
+      "subprocess",
       "sys"
     ],
     "scripts/update_index.py": [
@@ -419,20 +402,30 @@
       "datetime",
       "index_utils"
     ],
+    "scripts/reindex_if_needed.py": [
+      "json",
+      "sys",
+      "os",
+      "subprocess",
+      "pathlib",
+      "datetime"
+    ],
     "scripts/index_utils.py": [
       "re",
       "fnmatch",
       "pathlib",
       "typing"
     ],
-    "scripts/detect_external_changes.py": [
-      "os",
+    "scripts/project_index.py": [
       "json",
-      "pathlib",
+      "os",
+      "re",
       "datetime",
-      "subprocess",
+      "pathlib",
+      "typing",
+      "index_utils",
       "sys"
     ]
   },
-  "staleness_check": 1754690921.403226
+  "staleness_check": 1754839003.418145
 }

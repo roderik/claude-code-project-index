@@ -123,7 +123,7 @@ if [[ -f "$SCRIPT_DIR/scripts/project_index.py" || -f "$SCRIPT_DIR/README.md" ]]
 else
     # Clone from GitHub
     echo "Cloning from GitHub..."
-    git clone https://github.com/ericbuess/claude-code-project-index.git "$INSTALL_DIR"
+    git clone https://github.com/roderik/claude-code-project-index.git "$INSTALL_DIR"
     
     # Move Python files to scripts directory
     mkdir -p "$INSTALL_DIR/scripts"

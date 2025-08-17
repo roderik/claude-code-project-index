@@ -377,27 +377,60 @@ def build_index(root_dir: str) -> Tuple[Dict, int]:
 
 
 def compress_index_if_needed(index: Dict) -> Dict:
-    """Compress index if it exceeds size limit."""
+    """Compress index if it exceeds size limit without stalling.
+
+    Strategy:
+    - Trim tree output
+    - Prefer removing/listing-only lightweight entries
+    - If none left, degrade parsed entries to listed-only to shrink
+    - As a last resort, remove arbitrary files
+    """
     index_json = json.dumps(index, indent=2)
-    
     if len(index_json) <= MAX_INDEX_SIZE:
         return index
-    
+
     print(f"⚠️  Index too large ({len(index_json)} bytes), compressing...")
-    
-    # First, reduce tree depth
+
+    # Trim tree depth to keep overview compact
     if len(index['project_structure']['tree']) > 100:
         index['project_structure']['tree'] = index['project_structure']['tree'][:100]
         index['project_structure']['tree'].append("... (truncated)")
-    
-    # If still too large, remove some listed-only files
-    while len(json.dumps(index, indent=2)) > MAX_INDEX_SIZE and index['files']:
-        # Find and remove a listed-only file
+
+    # Iteratively shrink until under size or out of files
+    # Guard prevents any chance of infinite loops
+    iterations = 0
+    while len(json.dumps(index, indent=2)) > MAX_INDEX_SIZE and index['files'] and iterations < 100000:
+        iterations += 1
+        changed = False
+
+        # 1) Remove a listed-only file first (cheapest)
         for path, info in list(index['files'].items()):
             if not info.get('parsed', False):
                 del index['files'][path]
+                changed = True
                 break
-    
+
+        # 2) If none, degrade a parsed file to a minimal listed-only entry
+        if not changed:
+            for path, info in list(index['files'].items()):
+                if info.get('parsed', False):
+                    index['files'][path] = {
+                        'language': info.get('language', 'unknown'),
+                        'parsed': False
+                    }
+                    changed = True
+                    break
+
+        # 3) As a last resort, remove any file
+        if not changed:
+            # This should rarely happen, but guarantees progress
+            del index['files'][next(iter(index['files']))]
+            changed = True
+
+        if not changed:
+            # Safety break (should never trigger due to the branches above)
+            break
+
     return index
 
 

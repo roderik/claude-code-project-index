@@ -7,7 +7,7 @@ A UML-inspired code intelligence system that gives Claude Code comprehensive arc
 ## 🚀 Quick Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ericbuess/claude-code-project-index/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/roderik/claude-code-project-index/main/install.sh | bash
 ```
 
 That's it! The tool is installed with automatic hooks for maintaining the index.
@@ -17,11 +17,13 @@ That's it! The tool is installed with automatic hooks for maintaining the index.
 ### Create an Index for Your Project
 
 Navigate to any project directory and run:
+
 ```bash
 /index
 ```
 
 This creates `PROJECT_INDEX.json` with:
+
 - Complete function/class signatures
 - Call graphs showing what calls what
 - Directory structure and purposes
@@ -33,6 +35,7 @@ This creates `PROJECT_INDEX.json` with:
 ### Using the Index
 
 Once created, reference it when you need architectural awareness:
+
 ```bash
 # Ask architectural questions
 @PROJECT_INDEX.json what functions call authenticate_user?
@@ -44,8 +47,9 @@ Once created, reference it when you need architectural awareness:
 ## 📦 Updating
 
 To update to the latest version, simply run the installer again:
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ericbuess/claude-code-project-index/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/roderik/claude-code-project-index/main/install.sh | bash
 ```
 
 **Note**: This will remove and reinstall the tool completely. Your PROJECT_INDEX.json files in projects remain untouched.
@@ -56,11 +60,11 @@ For the best experience, also install [Claude Code Docs](https://github.com/eric
 
 ## Important: Community Tool - Fork and Customize!
 
-**This is a personal tool** I built and shared with the community. I may not actively maintain it or implement feature requests quickly (or at all). 
+**This is a personal tool** I built and shared with the community. I may not actively maintain it or implement feature requests quickly (or at all).
 
 ### What This Means for You
 
-- **Fork it!** - Make it your own: `git clone https://github.com/ericbuess/claude-code-project-index.git`
+- **Fork it!** - Make it your own: `git clone https://github.com/roderik/claude-code-project-index.git`
 - **Let Claude customize it** - Claude Code can modify the tool to fit your exact needs
 - **No waiting for updates** - Don't wait for me to add features, ask Claude to add them for you
 - **Share your improvements** - Fork and share your enhanced versions with others
@@ -73,11 +77,10 @@ cd ~/.claude-code-project-index
 
 # Open Claude Code and ask for customizations:
 # "Modify the indexer to skip test files and only index src/"
-# "Add support for Ruby files" 
+# "Add support for Ruby files"
 # "Change the index format to be more compact"
 # "Make it work with my monorepo structure"
 ```
-
 
 ## Background
 
@@ -89,15 +92,15 @@ Claude Code CLI faces specific challenges when working with your codebase. PROJE
 
 ### Common Claude Code Pain Points → Solutions
 
-| Pain Point | Without PROJECT_INDEX | With PROJECT_INDEX |
-|------------|----------------------|-------------------|
-| **🔄 Duplicate Code** | Claude recreates existing functions because it can't see what's already there | Claude sees all existing functions with signatures and can reuse them |
-| **💥 Breaking Changes** | Claude changes a function without knowing what else depends on it | `called_by` field shows exactly what will break if you change something |
-| **📁 Wrong Location** | Claude adds code to random files or creates unnecessary new files | Directory purposes and file patterns guide Claude to the right location |
-| **🔍 Wasted Tokens** | Claude uses multiple search commands trying to find the right code | Single index reference provides instant navigation to any function |
-| **🧟 Dead Code** | Claude keeps unused code because it can't verify if it's called anywhere | Functions without `called_by` are clearly dead code, safe to remove |
-| **🐛 Incomplete Fixes** | Claude fixes one function but misses related functions that need updates | `calls` field shows complete call chains for comprehensive fixes |
-| **🏗️ Pattern Violations** | Claude uses different patterns than the rest of your codebase | Extracted patterns ensure consistency with existing code style |
+| Pain Point                | Without PROJECT_INDEX                                                         | With PROJECT_INDEX                                                      |
+| ------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **🔄 Duplicate Code**     | Claude recreates existing functions because it can't see what's already there | Claude sees all existing functions with signatures and can reuse them   |
+| **💥 Breaking Changes**   | Claude changes a function without knowing what else depends on it             | `called_by` field shows exactly what will break if you change something |
+| **📁 Wrong Location**     | Claude adds code to random files or creates unnecessary new files             | Directory purposes and file patterns guide Claude to the right location |
+| **🔍 Wasted Tokens**      | Claude uses multiple search commands trying to find the right code            | Single index reference provides instant navigation to any function      |
+| **🧟 Dead Code**          | Claude keeps unused code because it can't verify if it's called anywhere      | Functions without `called_by` are clearly dead code, safe to remove     |
+| **🐛 Incomplete Fixes**   | Claude fixes one function but misses related functions that need updates      | `calls` field shows complete call chains for comprehensive fixes        |
+| **🏗️ Pattern Violations** | Claude uses different patterns than the rest of your codebase                 | Extracted patterns ensure consistency with existing code style          |
 
 PROJECT_INDEX.json solves this by providing Claude with complete architectural and flow awareness of your entire project.
 
@@ -106,6 +109,7 @@ PROJECT_INDEX.json solves this by providing Claude with complete architectural a
 The system extracts key UML (Unified Modeling Language) concepts to build a comprehensive project model:
 
 ### 📐 Class Diagrams
+
 - **Classes with inheritance** (`extends`, `implements`)
 - **Methods with full signatures** (parameters, return types)
 - **Properties and visibility** (public methods, private internals)
@@ -114,6 +118,7 @@ The system extracts key UML (Unified Modeling Language) concepts to build a comp
 **Why it matters**: Prevents reimplementation of existing functionality and ensures proper inheritance patterns.
 
 ### 🔗 Component & Package Diagrams
+
 - **Module dependencies** (imports/exports)
 - **Package structure** (directory organization)
 - **Dependency graphs** (what depends on what)
@@ -121,6 +126,7 @@ The system extracts key UML (Unified Modeling Language) concepts to build a comp
 **Why it matters**: Helps maintain clean architecture and avoid circular dependencies.
 
 ### 📊 Object Diagrams
+
 - **Enumerations with values**
 - **Constants and configurations**
 - **Type aliases and unions**
@@ -128,6 +134,7 @@ The system extracts key UML (Unified Modeling Language) concepts to build a comp
 **Why it matters**: Ensures consistent use of domain values and types across the codebase.
 
 ### 🏛️ Deployment Diagrams
+
 - **File organization and purposes**
 - **Directory conventions** (controllers, models, views)
 - **Documentation structure**
@@ -137,6 +144,7 @@ The system extracts key UML (Unified Modeling Language) concepts to build a comp
 ## Key Features
 
 ### 🌳 Directory Tree Visualization
+
 ```
 .
 ├── src/ (234 files)
@@ -147,40 +155,43 @@ The system extracts key UML (Unified Modeling Language) concepts to build a comp
 ```
 
 ### 📚 Documentation Awareness
+
 Extracts section headers and architectural hints from all markdown files.
-- *Helps Claude:* Navigate to relevant documentation sections instantly
-- *Avoids:* Missing important project guidelines and conventions
+
+- _Helps Claude:_ Navigate to relevant documentation sections instantly
+- _Avoids:_ Missing important project guidelines and conventions
 
 ### 🏗️ Directory Purpose Inference
+
 Automatically infers the purpose of directories based on naming patterns:
+
 - `auth/` → "Authentication and authorization logic"
 - `models/` → "Data models and database schemas"
 - `utils/` → "Shared utility functions and helpers"
-- *Helps Claude:* Place new code in the architecturally correct location
-- *Avoids:* Creating duplicate directories or misplacing files
+- _Helps Claude:_ Place new code in the architecturally correct location
+- _Avoids:_ Creating duplicate directories or misplacing files
 
 ### 🔍 Enhanced Code Intelligence with Call Tracking
 
 PROJECT_INDEX provides comprehensive code analysis that directly helps Claude Code avoid mistakes:
 
 #### Call Graph Analysis (v0.2.0) - Flow Awareness
+
 - **`calls` field** - Lists every function that this function calls
-  - *Helps Claude:* Follow execution paths when debugging
-  - *Avoids:* Missing related bugs in called functions
-  
-- **`called_by` field** - Lists every function that calls this function  
-  - *Helps Claude:* Understand impact before making changes
-  - *Avoids:* Breaking dependent code unknowingly
-  
+  - _Helps Claude:_ Follow execution paths when debugging
+  - _Avoids:_ Missing related bugs in called functions
+- **`called_by` field** - Lists every function that calls this function
+  - _Helps Claude:_ Understand impact before making changes
+  - _Avoids:_ Breaking dependent code unknowingly
 - **Dead code detection** - Functions without `called_by` are unused
-  - *Helps Claude:* Safely remove unused code
-  - *Avoids:* Keeping zombie code that clutters the codebase
-  
+  - _Helps Claude:_ Safely remove unused code
+  - _Avoids:_ Keeping zombie code that clutters the codebase
 - **Complete call chains** - Trace from entry points to deep functions
-  - *Helps Claude:* Understand full context of execution
-  - *Avoids:* Partial fixes that miss root causes
+  - _Helps Claude:_ Understand full context of execution
+  - _Avoids:_ Partial fixes that miss root causes
 
 #### Class Diagram Elements
+
 - **Classes with inheritance chains** - `class User(BaseModel, Auditable)`
 - **Method signatures with visibility** - Public vs private methods
 - **Abstract classes and methods** - `@abstractmethod` markers
@@ -188,12 +199,14 @@ PROJECT_INDEX provides comprehensive code analysis that directly helps Claude Co
 - **Properties and attributes** - Instance variables and class constants
 
 #### Behavioral Patterns
+
 - **Decorators as stereotypes** - `@property`, `@staticmethod`, `@cached`
 - **Method overrides** - Polymorphic behavior tracking
 - **Event handlers** - Callback and listener patterns
 - **Lifecycle methods** - `__init__`, `componentDidMount`, etc.
 
 #### Structural Patterns
+
 - **Module dependencies** - Import/export relationships
 - **Type system modeling** - Aliases, unions, generics
 - **Enumerations** - Domain values with meanings
@@ -201,11 +214,13 @@ PROJECT_INDEX provides comprehensive code analysis that directly helps Claude Co
 - **Exception hierarchies** - Error handling chains
 
 #### Documentation Integration
+
 - **Docstring extraction** - First line for quick context
 - **Architectural hints** - References in markdown files
 - **Directory purposes** - Convention-based organization
 
 Example output:
+
 ```json
 {
   "imports": ["typing", "enum", "abc"],
@@ -262,34 +277,38 @@ Example output:
 ```
 
 ### 🔄 Automatic Updates via Hooks
+
 - **PostToolUse Hook**: Updates index incrementally when files are edited
-  - *Helps Claude:* Always work with current code structure
-  - *Avoids:* Stale information leading to wrong decisions
+  - _Helps Claude:_ Always work with current code structure
+  - _Avoids:_ Stale information leading to wrong decisions
 - **Stop Hook**: Checks for staleness and external changes
-  - *Helps Claude:* Detect when code changed outside the session
-  - *Avoids:* Conflicts with external changes (git pulls, IDE edits)
+  - _Helps Claude:_ Detect when code changed outside the session
+  - _Avoids:_ Conflicts with external changes (git pulls, IDE edits)
 - **Manual Creation**: Use `/index` command to create initial index
-  - *Helps Claude:* Get immediate project awareness
-  - *Avoids:* Blind exploration and wasted search commands
+  - _Helps Claude:_ Get immediate project awareness
+  - _Avoids:_ Blind exploration and wasted search commands
 - **Smart Maintenance**: Index updates itself automatically after creation
-  - *Helps Claude:* Focus on coding, not index management
-  - *Avoids:* Manual maintenance overhead
+  - _Helps Claude:_ Focus on coding, not index management
+  - _Avoids:_ Manual maintenance overhead
 
 ## Real-World Project Sizes
 
 ⚠️ **Testing Disclosure**: This tool has primarily been tested on smaller projects. Your experience with larger codebases may vary.
 
 ### 🏠 Small Projects (< 50 files)
+
 - Instant indexing and updates
 - Full detail extraction
 - **Note**: If your entire project fits comfortably in Claude's context window, you might not need this tool - Claude Code can just read all files directly
 
 ### 🏢 Medium Projects (50-500 files) - **Limited Testing**
+
 - May take 10-30 seconds to index
 - Index file might grow large depending on code complexity
 - May require customization for optimal performance
 
 ### 🏙️ Large Projects (500+ files) - **Likely Needs Customization**
+
 - Index often exceeds Claude's context limit
 - **You'll probably need to ask Claude to customize the indexer**:
   ```
@@ -302,8 +321,8 @@ Example output:
   ```
 - Consider creating multiple smaller indexes for different parts of your codebase
 
-
 ### When NOT to Use
+
 - **Single-file scripts** - Overhead exceeds benefit
 - **Pure documentation repos** - No code to analyze
 - **Binary/asset repositories** - No source code structure
@@ -320,10 +339,11 @@ Example output:
 Run this single command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ericbuess/claude-code-project-index/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/roderik/claude-code-project-index/main/install.sh | bash
 ```
 
 This will:
+
 1. Install PROJECT_INDEX to `~/.claude-code-project-index/`
 2. Create the `/index` command in Claude Code
 3. Configure hooks for automatic index updates
@@ -334,7 +354,7 @@ This will:
 If you prefer to install manually:
 
 ```bash
-git clone https://github.com/ericbuess/claude-code-project-index.git ~/.claude-code-project-index
+git clone https://github.com/roderik/claude-code-project-index.git ~/.claude-code-project-index
 cd ~/.claude-code-project-index
 ./install.sh
 ```
@@ -350,20 +370,23 @@ To completely remove PROJECT_INDEX:
 Or if the directory is already gone:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ericbuess/claude-code-project-index/main/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/roderik/claude-code-project-index/main/uninstall.sh | bash
 ```
 
 ## How It Works
 
 ### One-Time Setup Per Project
+
 Run `/index` **once** in any project where you want architectural awareness:
+
 ```bash
 /index
 ```
 
 This creates `PROJECT_INDEX.json` and enables automatic maintenance.
 
-**Important**: 
+**Important**:
+
 - You only need to run `/index` once per project
 - The index automatically updates on every file change thereafter
 - If you don't want an index in a project, simply don't run `/index` there
@@ -381,6 +404,7 @@ This creates `PROJECT_INDEX.json` and enables automatic maintenance.
 ### Currently Supported Languages
 
 #### Fully Parsed (with enhanced extraction)
+
 - ✅ **Python** (.py)
   - Full function/method signatures with type hints
   - Class inheritance and abstract methods
@@ -389,7 +413,6 @@ This creates `PROJECT_INDEX.json` and enables automatic maintenance.
   - Type aliases (Union, Optional, etc.)
   - Module and class constants
   - Exception hierarchy
-  
 - ✅ **JavaScript/TypeScript** (.js, .ts, .tsx, .jsx)
   - Function signatures with parameter types
   - Class inheritance (extends)
@@ -409,14 +432,17 @@ This creates `PROJECT_INDEX.json` and enables automatic maintenance.
   - Both `function_name()` and `function function_name` syntax
 
 #### Listed Only (file tracking)
+
 All other common languages are tracked but not parsed for signatures:
+
 - Go, Rust, Java, C/C++, Ruby, PHP, Swift, Kotlin, Scala, C#, SQL, R, Lua, Elixir, Julia, Dart, Vue, Svelte, and more
 
 ### Adding Language Support
 
-**Want support for your favorite language?** 
+**Want support for your favorite language?**
 
 Fork this repo and add a parser! Check out the existing parsers in `scripts/index_utils.py`:
+
 - `extract_python_signatures()` for Python
 - `extract_javascript_signatures()` for JavaScript/TypeScript
 - `extract_shell_signatures()` for Shell scripts
@@ -426,7 +452,9 @@ Pull requests are welcome! The parsing doesn't need to be perfect - even basic f
 ## Using PROJECT_INDEX.json
 
 ### Option 1: Auto-load via CLAUDE.md (Recommended)
+
 Add to your project's `CLAUDE.md` file to automatically load the index in every session:
+
 ```markdown
 # Project Context
 
@@ -435,7 +463,8 @@ Add to your project's `CLAUDE.md` file to automatically load the index in every 
 Use the index to understand the codebase structure before making changes.
 ```
 
-**Benefits**: 
+**Benefits**:
+
 - Loads automatically every session
 - Claude always has architectural awareness
 - No need to manually reference
@@ -443,7 +472,9 @@ Use the index to understand the codebase structure before making changes.
 **Tradeoff**: Uses context tokens even for simple tasks
 
 ### Option 2: Reference When Needed
+
 Only load the index when you need architectural awareness:
+
 ```bash
 # For specific architectural questions
 @PROJECT_INDEX.json what functions call authenticate_user?
@@ -455,7 +486,8 @@ Only load the index when you need architectural awareness:
 @PROJECT_INDEX.json where should I add a new email service?
 ```
 
-**Benefits**: 
+**Benefits**:
+
 - Saves context tokens for simple tasks
 - More control over when to use it
 
@@ -464,6 +496,7 @@ Only load the index when you need architectural awareness:
 ### Advanced Usage with Sub-Agents
 
 Use Claude's Task tool for complex architectural analysis:
+
 ```
 Use the Task tool with the general-purpose agent to analyze @PROJECT_INDEX.json and provide:
 
@@ -488,6 +521,7 @@ Return specific file:line references for all findings.
 ### Common Usage Patterns
 
 #### Before Making Changes
+
 ```bash
 # Check what will break if you change a function
 @PROJECT_INDEX.json analyze impact of changing validate_user signature
@@ -497,6 +531,7 @@ Return specific file:line references for all findings.
 ```
 
 #### During Debugging
+
 ```bash
 # Trace execution flow
 @PROJECT_INDEX.json show the call chain from endpoint to database
@@ -506,6 +541,7 @@ Return specific file:line references for all findings.
 ```
 
 #### Code Cleanup
+
 ```bash
 # Find dead code
 @PROJECT_INDEX.json list functions with no callers
@@ -515,6 +551,7 @@ Return specific file:line references for all findings.
 ```
 
 ### Real-World Impact for Claude
+
 - **📍 No More Guessing**: Know exactly where each function exists
 - **🎯 Zero Search Waste**: Navigate directly without trial and error
 - **💥 Safe Changes**: See impact radius before modifying anything
@@ -525,7 +562,9 @@ Return specific file:line references for all findings.
 ## Configuration
 
 ### Gitignore Support
+
 PROJECT_INDEX automatically respects your `.gitignore` file patterns. Files and directories listed in `.gitignore` will be excluded from indexing, ensuring that:
+
 - Sensitive files (secrets, credentials) are never indexed
 - Generated files don't clutter the index
 - Test files can be excluded if desired
@@ -534,16 +573,20 @@ PROJECT_INDEX automatically respects your `.gitignore` file patterns. Files and 
 The system combines `.gitignore` patterns with sensible defaults, so even without a `.gitignore` file, common directories like `node_modules`, `.git`, and `__pycache__` are automatically excluded.
 
 ### Customizing Additional Ignored Directories
+
 For directories not covered by `.gitignore`, you can edit the `IGNORE_DIRS` set in `~/.claude-code-project-index/scripts/index_utils.py`:
+
 ```python
 IGNORE_DIRS = {
-    '.git', 'node_modules', '__pycache__', '.venv', 'venv', 
+    '.git', 'node_modules', '__pycache__', '.venv', 'venv',
     'build', 'dist', '.next', 'target', '.pytest_cache'
 }
 ```
 
 ### File Size Limits
+
 The index is automatically compressed if it exceeds 1MB:
+
 - Tree structure is truncated to 100 entries
 - Non-parsed files are removed first
 
@@ -552,6 +595,7 @@ The index is automatically compressed if it exceeds 1MB:
 PROJECT_INDEX includes intelligent Python detection that automatically finds and uses the **newest** Python version available:
 
 ### How It Works
+
 1. **During Installation**: Scans your system for all Python versions
 2. **Selects the Newest**: Automatically picks the latest version (e.g., 3.12 over 3.10)
 3. **Saves the Choice**: Stores the selected Python path in `.python_cmd`
@@ -559,6 +603,7 @@ PROJECT_INDEX includes intelligent Python detection that automatically finds and
 5. **Virtual Environments Win**: If you're in a venv during install, that takes priority
 
 ### Smart Version Selection
+
 - **Finds ALL Python installations** on your system
 - **Shows what's available** before making a choice
 - **Picks newest by default** for best performance and features
@@ -566,6 +611,7 @@ PROJECT_INDEX includes intelligent Python detection that automatically finds and
 - **Consistent across usage** - hooks use the same Python that was selected
 
 Example output:
+
 ```
 🔍 Searching for Python versions...
    ✓ Found Python 3.11.5 at: /usr/bin/python3.11
@@ -577,18 +623,22 @@ Example output:
 ```
 
 ### Manual Override
+
 To use a specific Python version instead of the newest:
+
 ```bash
 # During installation
 export PYTHON_CMD=python3.11
-curl -fsSL https://raw.githubusercontent.com/ericbuess/claude-code-project-index/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/roderik/claude-code-project-index/main/install.sh | bash
 
 # Or for a specific path
 export PYTHON_CMD=/usr/local/bin/python3.12
 ```
 
 ### Clear Error Messages
+
 If Python isn't found, you'll see:
+
 - Minimum version requirements (3.8+)
 - Platform-specific installation instructions
 - How to manually specify Python location
@@ -596,29 +646,38 @@ If Python isn't found, you'll see:
 ## Troubleshooting
 
 ### Python Issues?
+
 If hooks aren't working or you see Python errors:
+
 1. **Check saved Python**: `cat ~/.claude-code-project-index/.python_cmd`
 2. **Verify it still works**: Test the command shown above
 3. **Reinstall if needed**: The installer will find Python again
 4. **Override if needed**: `export PYTHON_CMD=/path/to/python` before installing
 
 ### Index not updating?
+
 1. Check that hooks are enabled: `cat ~/.claude/settings.json`
 2. Verify installation: `ls -la ~/.claude-code-project-index/`
 3. Look for errors in Claude's output
-4. Reinstall if needed: `curl -fsSL https://raw.githubusercontent.com/ericbuess/claude-code-project-index/main/install.sh | bash`
+4. Reinstall if needed: `curl -fsSL https://raw.githubusercontent.com/roderik/claude-code-project-index/main/install.sh | bash`
 
 ### Index too large?
+
 The system automatically compresses large indexes, but you can:
+
 - Add more directories to `IGNORE_DIRS` in `~/.claude-code-project-index/scripts/index_utils.py`
 - Reduce `MAX_TREE_DEPTH` (default: 5) in `~/.claude-code-project-index/scripts/project_index.py`
 
 ### External changes not detected?
+
 The system checks for changes every time Claude stops. If needed, manually run:
+
 ```bash
 /index
 ```
+
 Or from the command line:
+
 ```bash
 python3 ~/.claude-code-project-index/scripts/project_index.py
 ```
@@ -694,17 +753,20 @@ python3 ~/.claude-code-project-index/scripts/project_index.py
 PROJECT_INDEX follows a deliberate design philosophy:
 
 ### 🎯 Explicit Creation
+
 - **You decide** which projects need indexing
 - **No hidden behavior** - indexes only exist where you create them
 - **Privacy respected** - sensitive projects remain unindexed
 
 ### 🔄 Automatic Maintenance
+
 - **Once created**, the index maintains itself
 - **Incremental updates** on every file edit
 - **External change detection** for git operations
 - **Staleness checks** ensure accuracy
 
 ### 💭 Selective Usage
+
 - **Reference when needed** with `@PROJECT_INDEX.json`
 - **Skip for simple tasks** that don't need architecture awareness
 - **Optimal token usage** - only load context when valuable
@@ -714,19 +776,22 @@ This approach respects developer autonomy while providing powerful assistance wh
 ## Concrete Benefits for Claude Code
 
 ### Speed & Efficiency
+
 - **90% fewer search commands** - Direct navigation to any function/class
 - **3x faster debugging** - Follow call chains instantly
 - **50% less context switching** - All architectural info in one place
 
-### Accuracy & Safety  
+### Accuracy & Safety
+
 - **Zero breaking changes** - `called_by` prevents surprise breakage
 - **No duplicate functions** - See all existing code before writing
 - **Correct file placement** - Directory purposes guide location choices
 - **Safe refactoring** - Know exact impact radius of changes
 
 ### Code Quality
+
 - **Dead code removal** - Identify and remove unused functions
-- **Pattern consistency** - Match existing code style automatically  
+- **Pattern consistency** - Match existing code style automatically
 - **Complete fixes** - Fix entire call chains, not just symptoms
 - **Architectural integrity** - Maintain established project structure
 
@@ -747,9 +812,11 @@ cd ~/.claude-code-project-index
 ```
 
 ### Adding Language Support
+
 To add a new language parser, ask Claude:
+
 ```
-Add support for [language] files in scripts/index_utils.py. 
+Add support for [language] files in scripts/index_utils.py.
 Look at extract_python_signatures() as an example.
 ```
 
@@ -768,6 +835,7 @@ MIT License - See LICENSE file for details
 ## Author
 
 Created by [Eric Buess](https://github.com/ericbuess)
+
 - 🐦 [Twitter/X](https://x.com/EricBuess)
 - 📺 [YouTube](https://www.youtube.com/@EricBuess)
 - 💼 [GitHub](https://github.com/ericbuess)
