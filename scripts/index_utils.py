@@ -7,13 +7,12 @@ Contains common functionality used by both project_index.py and hook scripts.
 import re
 import fnmatch
 from pathlib import Path
+import subprocess
 from typing import Dict, List, Optional, Set, Tuple
 
-# What to ignore (sensible defaults)
+# What to ignore by default if Git isn't available
 IGNORE_DIRS = {
-    '.git', 'node_modules', '__pycache__', '.venv', 'venv', 'env',
-    'build', 'dist', '.next', 'target', '.pytest_cache', 'coverage',
-    '.idea', '.vscode', '__pycache__', '.DS_Store', 'eggs', '.eggs'
+    '.git', '__pycache__', '.venv', 'venv', 'env', '.idea', '.vscode', '.DS_Store'
 }
 
 # Languages we can fully parse (extract functions/classes)
@@ -1259,6 +1258,55 @@ def get_language_name(extension: str) -> str:
 _gitignore_cache = {}
 
 
+def git_root(path: Path) -> Optional[Path]:
+    """Return Git repository root for path, or None if not in a repo."""
+    try:
+        out = subprocess.run(
+            ['git', '-C', str(path), 'rev-parse', '--show-toplevel'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        p = Path(out.stdout.strip())
+        return p if p.exists() else None
+    except Exception:
+        return None
+
+
+def git_ls_unignored_files(root: Path, scope: Optional[Path] = None) -> Optional[List[Path]]:
+    """List non-ignored files using Git. Returns paths relative to root.
+
+    - root: Git repo root (output of git_root)
+    - scope: subdirectory to limit results; when provided, filters to files under scope
+    """
+    if git_root(root) is None:
+        return None
+    try:
+        # Use exclude-standard (includes .gitignore, .git/info/exclude, global excludes)
+        # -c (cached/tracked) + -o (others/untracked) → all non-ignored
+        cmd = ['git', '-C', str(root), 'ls-files', '-co', '--exclude-standard', '-z']
+        out = subprocess.run(cmd, capture_output=True, check=True)
+        raw = out.stdout
+        items = [x for x in raw.split(b'\x00') if x]
+        paths = [Path(x.decode('utf-8')) for x in items]
+        if scope is not None:
+            scope = scope.resolve()
+            # Keep only files under scope
+            scoped = []
+            for p in paths:
+                full = (root / p).resolve()
+                if str(full).startswith(str(scope) + str(Path('/')) ) or full == scope or scope in full.parents:
+                    # Return relative to scope
+                    try:
+                        scoped.append(full.relative_to(scope))
+                    except Exception:
+                        continue
+            return scoped
+        return paths
+    except Exception:
+        return None
+
+
 def parse_gitignore(gitignore_path: Path) -> List[str]:
     """Parse a .gitignore file and return list of patterns."""
     if not gitignore_path.exists():
@@ -1286,7 +1334,7 @@ def load_gitignore_patterns(root_path: Path) -> Set[str]:
     if cache_key in _gitignore_cache:
         return _gitignore_cache[cache_key]
     
-    # Start with default ignore patterns
+    # Start with conservative defaults only; Git will be primary filter
     patterns = set(IGNORE_DIRS)
     
     # Add patterns from .gitignore in project root
@@ -1352,12 +1400,33 @@ def should_index_file(path: Path, root_path: Path = None) -> bool:
     if not (path.suffix in CODE_EXTENSIONS or path.suffix in MARKDOWN_EXTENSIONS):
         return False
     
-    # Skip if in hardcoded ignored directory (for safety)
+    # If inside Git repo and path is ignored by Git, skip
+    if root_path:
+        repo = git_root(root_path)
+        if repo is not None:
+            # Use git check-ignore for precise evaluation
+            try:
+                rel = str((root_path / path).resolve().relative_to(repo)) if root_path else str(path)
+            except Exception:
+                rel = str(path)
+            try:
+                res = subprocess.run(
+                    ['git', '-C', str(repo), 'check-ignore', '-q', '--', rel],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+                if res.returncode == 0:
+                    return False
+            except Exception:
+                # Fall through to .gitignore patterns
+                pass
+    
+    # Skip if in basic ignored directory (fallback when not in Git)
     for part in path.parts:
         if part in IGNORE_DIRS:
             return False
     
-    # If root_path provided, check gitignore patterns
+    # If root_path provided, check .gitignore patterns (fallback)
     if root_path:
         patterns = load_gitignore_patterns(root_path)
         if matches_gitignore_pattern(path, patterns, root_path):

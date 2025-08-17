@@ -154,9 +154,9 @@ cat > "$HOME/.claude/commands/index.md" << 'EOF'
 Execute the PROJECT_INDEX helper script at ~/.claude-code-project-index/scripts/project-index-helper.sh
 
 Usage:
-- /index - Create or update PROJECT_INDEX.json for current project
+- /index - Create or update PROJECT_INDEX.dsl for current project
 
-This analyzes your codebase and creates PROJECT_INDEX.json with:
+This analyzes your codebase and creates PROJECT_INDEX.dsl with:
 - Directory tree structure
 - Function/method signatures  
 - Class inheritance relationships
@@ -253,8 +253,8 @@ echo "   • index_utils.py"
 echo "   • detect_external_changes.py"
 echo ""
 echo "🚀 Usage:"
-echo "   • Use /index command to create PROJECT_INDEX.json in any project"
-echo "   • Reference with @PROJECT_INDEX.json when you need architectural awareness"
+echo "   • Use /index command to create PROJECT_INDEX.dsl in any project"
+echo "   • Reference with @PROJECT_INDEX.dsl when you need architectural awareness"
 echo "   • The index updates automatically when you edit files"
 echo ""
 echo "📚 For more information, see: $INSTALL_DIR/README.md"

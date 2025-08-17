@@ -22,7 +22,7 @@ Navigate to any project directory and run:
 /index
 ```
 
-This creates `PROJECT_INDEX.json` with:
+This creates `PROJECT_INDEX.dsl` with:
 
 - Complete function/class signatures
 - Call graphs showing what calls what
@@ -38,10 +38,10 @@ Once created, reference it when you need architectural awareness:
 
 ```bash
 # Ask architectural questions
-@PROJECT_INDEX.json what functions call authenticate_user?
+@PROJECT_INDEX.dsl what functions call authenticate_user?
 
 # Or auto-load in every session by adding to CLAUDE.md:
-# Add @PROJECT_INDEX.json to your CLAUDE.md file
+# Add @PROJECT_INDEX.dsl to your CLAUDE.md file
 ```
 
 ## 📦 Updating
@@ -52,7 +52,7 @@ To update to the latest version, simply run the installer again:
 curl -fsSL https://raw.githubusercontent.com/roderik/claude-code-project-index/main/install.sh | bash
 ```
 
-**Note**: This will remove and reinstall the tool completely. Your PROJECT_INDEX.json files in projects remain untouched.
+**Note**: This will remove and reinstall the tool completely. Your PROJECT_INDEX.dsl files in projects remain untouched.
 
 ## 🔧 Highly Recommended: Claude Code Docs
 
@@ -102,7 +102,7 @@ Claude Code CLI faces specific challenges when working with your codebase. PROJE
 | **🐛 Incomplete Fixes**   | Claude fixes one function but misses related functions that need updates      | `calls` field shows complete call chains for comprehensive fixes        |
 | **🏗️ Pattern Violations** | Claude uses different patterns than the rest of your codebase                 | Extracted patterns ensure consistency with existing code style          |
 
-PROJECT_INDEX.json solves this by providing Claude with complete architectural and flow awareness of your entire project.
+PROJECT_INDEX.dsl solves this by providing Claude with complete architectural and flow awareness of your entire project.
 
 ## UML Patterns and Their Value
 
@@ -383,18 +383,18 @@ Run `/index` **once** in any project where you want architectural awareness:
 /index
 ```
 
-This creates `PROJECT_INDEX.json` and enables automatic maintenance.
+This creates `PROJECT_INDEX.dsl` and enables automatic maintenance.
 
 **Important**:
 
 - You only need to run `/index` once per project
 - The index automatically updates on every file change thereafter
 - If you don't want an index in a project, simply don't run `/index` there
-- To stop indexing, just delete the PROJECT_INDEX.json file
+- To stop indexing, just delete the PROJECT_INDEX.dsl file
 
 ### What Happens After `/index`
 
-1. **Initial Index Creation**: Analyzes your entire codebase and creates PROJECT_INDEX.json
+1. **Initial Index Creation**: Analyzes your entire codebase and creates PROJECT_INDEX.dsl
 2. **Automatic Updates**: Hooks update the index whenever you edit files through Claude
 3. **External Change Detection**: Detects when files change outside Claude (git pulls, IDE edits)
 4. **Smart Reindexing**: Triggers full reindex when structure changes significantly
@@ -449,7 +449,7 @@ Fork this repo and add a parser! Check out the existing parsers in `scripts/inde
 
 Pull requests are welcome! The parsing doesn't need to be perfect - even basic function detection helps.
 
-## Using PROJECT_INDEX.json
+## Using PROJECT_INDEX.dsl
 
 ### Option 1: Auto-load via CLAUDE.md (Recommended)
 
@@ -458,7 +458,7 @@ Add to your project's `CLAUDE.md` file to automatically load the index in every 
 ```markdown
 # Project Context
 
-@PROJECT_INDEX.json
+@PROJECT_INDEX.dsl
 
 Use the index to understand the codebase structure before making changes.
 ```
@@ -477,13 +477,13 @@ Only load the index when you need architectural awareness:
 
 ```bash
 # For specific architectural questions
-@PROJECT_INDEX.json what functions call authenticate_user?
+@PROJECT_INDEX.dsl what functions call authenticate_user?
 
 # Before major refactoring
-@PROJECT_INDEX.json show me all files that import the auth module
+@PROJECT_INDEX.dsl show me all files that import the auth module
 
 # When adding new features
-@PROJECT_INDEX.json where should I add a new email service?
+@PROJECT_INDEX.dsl where should I add a new email service?
 ```
 
 **Benefits**:
@@ -498,7 +498,7 @@ Only load the index when you need architectural awareness:
 Use Claude's Task tool for complex architectural analysis:
 
 ```
-Use the Task tool with the general-purpose agent to analyze @PROJECT_INDEX.json and provide:
+Use the Task tool with the general-purpose agent to analyze @PROJECT_INDEX.dsl and provide:
 
 1. Impact analysis for refactoring the authentication system:
    - List all files that import or depend on auth modules
@@ -524,30 +524,30 @@ Return specific file:line references for all findings.
 
 ```bash
 # Check what will break if you change a function
-@PROJECT_INDEX.json analyze impact of changing validate_user signature
+@PROJECT_INDEX.dsl analyze impact of changing validate_user signature
 
 # Find where to add new code
-@PROJECT_INDEX.json where should I add a new email validation function?
+@PROJECT_INDEX.dsl where should I add a new email validation function?
 ```
 
 #### During Debugging
 
 ```bash
 # Trace execution flow
-@PROJECT_INDEX.json show the call chain from endpoint to database
+@PROJECT_INDEX.dsl show the call chain from endpoint to database
 
 # Find all callers of a problematic function
-@PROJECT_INDEX.json what calls process_payment and from which files?
+@PROJECT_INDEX.dsl what calls process_payment and from which files?
 ```
 
 #### Code Cleanup
 
 ```bash
 # Find dead code
-@PROJECT_INDEX.json list functions with no callers
+@PROJECT_INDEX.dsl list functions with no callers
 
 # Identify duplicate functionality
-@PROJECT_INDEX.json find functions with similar names or purposes
+@PROJECT_INDEX.dsl find functions with similar names or purposes
 ```
 
 ### Real-World Impact for Claude
@@ -682,7 +682,7 @@ Or from the command line:
 python3 ~/.claude-code-project-index/scripts/project_index.py
 ```
 
-## Example PROJECT_INDEX.json Structure
+## Example PROJECT_INDEX.dsl Format
 
 ```json
 {
@@ -767,7 +767,7 @@ PROJECT_INDEX follows a deliberate design philosophy:
 
 ### 💭 Selective Usage
 
-- **Reference when needed** with `@PROJECT_INDEX.json`
+- **Reference when needed** with `@PROJECT_INDEX.dsl`
 - **Skip for simple tasks** that don't need architecture awareness
 - **Optimal token usage** - only load context when valuable
 

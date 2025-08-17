@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Stop hook for PROJECT_INDEX.json full reindex
+Stop hook for PROJECT_INDEX.dsl full reindex
 This is the DEPLOYMENT VERSION to be placed in ~/.claude/scripts/
 
 Key differences from reindex_if_needed.py:
@@ -10,30 +10,28 @@ Key differences from reindex_if_needed.py:
 - Designed to work from any location
 """
 
-import json
 import sys
 import os
 import subprocess
 from pathlib import Path
 from datetime import datetime
+from index_utils import git_root, git_ls_unignored_files
 
 
-def check_index_features(index_path):
-    """Check if index has all required features."""
+def check_index_features(index_path: Path):
+    """Check DSL index has essential sections (header, meta, tree)."""
     try:
-        with open(index_path, 'r') as f:
-            index = json.load(f)
-        
-        # Check for required features
-        if 'project_structure' not in index:
-            return True, "Missing project structure tree"
-        
-        if index.get('tree_needs_refresh', False):
-            return True, "Directory tree needs refresh"
-        
+        text = index_path.read_text(encoding='utf-8', errors='ignore').splitlines()
+        if not text:
+            return True, "Empty DSL index"
+        has_header = any(line.startswith('! PROJECT_INDEX DSL') for line in text[:3])
+        has_meta = any(line.startswith('P ') for line in text[:50])
+        has_tree = any(line.startswith('T ') for line in text)
+        if not has_header or not has_meta or not has_tree:
+            return True, "Missing required DSL sections"
         return False, None
-    except:
-        return True, "Cannot read index file"
+    except Exception:
+        return True, "Cannot read DSL index"
 
 
 def check_index_staleness(index_path, threshold_hours=24):
@@ -49,73 +47,62 @@ def check_index_staleness(index_path, threshold_hours=24):
         return True  # If can't check, assume stale
 
 
-def check_missing_documentation(index_path, project_root):
-    """Check if important documentation files are missing from index."""
+def check_missing_documentation(index_path: Path, project_root: Path):
+    """Check if important docs exist but lack MD lines in DSL."""
     try:
-        with open(index_path, 'r') as f:
-            index = json.load(f)
-        
-        doc_map = index.get('documentation_map', {})
-        
-        # Check for common documentation files
+        text = index_path.read_text(encoding='utf-8', errors='ignore').splitlines()
+        md_lines = {line.split(' ', 1)[1].split(' ', 1)[0] for line in text if line.startswith('MD ')}
         important_docs = ['README.md', 'ARCHITECTURE.md', 'API.md', 'CONTRIBUTING.md']
-        
         for doc in important_docs:
-            doc_path = Path(project_root) / doc
-            if doc_path.exists() and doc not in doc_map:
+            if (project_root / doc).exists() and doc not in md_lines:
                 return True
-        
         return False
-    except:
+    except Exception:
         return True
 
 
-def check_structural_changes(index_path, project_root):
-    """Check if directory structure has significantly changed."""
+def check_structural_changes(index_path: Path, project_root: Path):
+    """Check if directory count changed >20% vs P dirs meta in DSL."""
     try:
-        with open(index_path, 'r') as f:
-            index = json.load(f)
-        
-        # Count current directories
-        dir_count = 0
-        for item in Path(project_root).rglob('*'):
-            if item.is_dir() and not any(part.startswith('.') for part in item.parts):
-                dir_count += 1
-        
-        # Compare with indexed count
-        indexed_dirs = index.get('stats', {}).get('total_directories', 0)
-        
-        # If directory count changed by more than 20%, reindex
-        if indexed_dirs > 0:
-            change_ratio = abs(dir_count - indexed_dirs) / indexed_dirs
+        text = index_path.read_text(encoding='utf-8', errors='ignore')
+        # Parse dirs=N from P line
+        dirs_meta = 0
+        for line in text.splitlines():
+            if line.startswith('P '):
+                m = __import__('re').search(r'\bdirs=(\d+)', line)
+                if m:
+                    dirs_meta = int(m.group(1))
+                break
+        # Count current directories using Git non-ignored files when available
+        repo = git_root(project_root)
+        if repo is not None:
+            files = git_ls_unignored_files(repo, project_root) or []
+            dirs = set()
+            for rel in files:
+                p = Path(rel).parent
+                while True:
+                    dirs.add(p)
+                    if str(p) == '.' or p == p.parent:
+                        break
+                    p = p.parent
+            dir_count = len(dirs)
+        else:
+            dir_count = sum(1 for p in project_root.rglob('*') if p.is_dir() and not any(part.startswith('.') for part in p.parts))
+        if dirs_meta > 0:
+            change_ratio = abs(dir_count - dirs_meta) / dirs_meta
             return change_ratio > 0.2
-        
         return False
-    except:
+    except Exception:
         return False
 
 
-def count_hook_updates(index_path):
-    """Count how many files were updated by hooks vs full index."""
-    try:
-        with open(index_path, 'r') as f:
-            index = json.load(f)
-        
-        hook_count = 0
-        total_count = 0
-        
-        for file_path, info in index.get('files', {}).items():
-            total_count += 1
-            if info.get('updated_by_hook', False):
-                hook_count += 1
-        
-        return hook_count, total_count
-    except:
-        return 0, 0
+def count_hook_updates(index_path: Path):
+    """DSL has no per-file hook markers; return zeros."""
+    return 0, 0
 
 
 def run_reindex(project_root):
-    """Run the project_index.py script to perform full reindex."""
+    """Run the project_index.py script to perform full reindex (DSL)."""
     try:
         # First try to find project_index.py in the project
         project_index_path = None
@@ -148,31 +135,13 @@ def run_reindex(project_root):
             )
             return result.returncode == 0
         else:
-            # Try to create a minimal index
-            index = {
-                'indexed_at': datetime.now().isoformat(),
-                'root': '.',
-                'project_structure': {
-                    'type': 'tree',
-                    'root': '.',
-                    'tree': ['.']
-                },
-                'documentation_map': {},
-                'directory_purposes': {},
-                'stats': {
-                    'total_files': 0,
-                    'total_directories': 0,
-                    'fully_parsed': {},
-                    'listed_only': {},
-                    'markdown_files': 0
-                },
-                'files': {}
-            }
-            
-            index_path = Path(project_root) / 'PROJECT_INDEX.json'
-            with open(index_path, 'w') as f:
-                json.dump(index, f, indent=2)
-            
+            # Create minimal DSL header if generator missing
+            dsl = [
+                '! PROJECT_INDEX DSL v0.1.0',
+                f"P root=. indexed_at={datetime.now().isoformat()} files=0 dirs=0 md=0",
+                'T .',
+            ]
+            (Path(project_root) / 'PROJECT_INDEX.dsl').write_text('\n'.join(dsl) + '\n', encoding='utf-8')
             return True
             
     except Exception as e:
@@ -182,7 +151,7 @@ def run_reindex(project_root):
 
 def main():
     """Main hook entry point."""
-    # Check if we're in a git repository or have a PROJECT_INDEX.json
+    # Check if we're in a git repository or have a PROJECT_INDEX.dsl
     current_dir = Path.cwd()
     index_path = None
     project_root = current_dir
@@ -190,8 +159,8 @@ def main():
     # Search up the directory tree
     check_dir = current_dir
     while check_dir != check_dir.parent:
-        # Check for PROJECT_INDEX.json
-        potential_index = check_dir / 'PROJECT_INDEX.json'
+        # Check for PROJECT_INDEX.dsl
+        potential_index = check_dir / 'PROJECT_INDEX.dsl'
         if potential_index.exists():
             index_path = potential_index
             project_root = check_dir
@@ -200,7 +169,7 @@ def main():
         # Check for .git directory
         if (check_dir / '.git').is_dir():
             project_root = check_dir
-            index_path = check_dir / 'PROJECT_INDEX.json'
+            index_path = check_dir / 'PROJECT_INDEX.dsl'
             break
             
         check_dir = check_dir.parent
@@ -234,12 +203,7 @@ def main():
         needs_reindex = True
         reason = "Directory structure changed significantly"
     
-    # 5. Check hook update ratio
-    else:
-        hook_count, total_count = count_hook_updates(index_path)
-        if total_count > 20 and hook_count / total_count > 0.5:
-            needs_reindex = True
-            reason = f"Many incremental updates ({hook_count}/{total_count})"
+    # No hook update ratio for DSL
     
     # Perform reindex if needed
     if needs_reindex:

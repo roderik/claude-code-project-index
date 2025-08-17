@@ -42,16 +42,16 @@ else
 fi
 
 # Run the indexer
-echo "🚀 Creating PROJECT_INDEX.json for current project..."
+echo "🚀 Creating PROJECT_INDEX.dsl for current project..."
 echo ""
 
 # Execute the Python script
 if $PYTHON_CMD "$PYTHON_SCRIPT" "$@"; then
     echo ""
-    echo "✨ PROJECT_INDEX.json created successfully!"
+    echo "✨ PROJECT_INDEX.dsl created successfully!"
     echo ""
     echo "📌 Usage tips:"
-    echo "   • Reference with @PROJECT_INDEX.json when you need architectural awareness"
+    echo "   • Reference with @PROJECT_INDEX.dsl when you need architectural awareness"
     echo "   • The index updates automatically when you edit files"
     echo "   • Re-run /index anytime to rebuild from scratch"
 else

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
 Detect files that changed outside of Claude's control
-Used by Stop hook to trigger incremental updates
+Used by Stop hook to trigger incremental updates (DSL index)
 """
 
 import os
-import json
 from pathlib import Path
 from datetime import datetime
+from index_utils import git_root, git_ls_unignored_files
 
 
 def get_file_mtime(file_path):
@@ -24,59 +24,54 @@ def detect_external_changes(index_path, project_root):
     Returns list of changed file paths.
     """
     try:
-        with open(index_path, 'r') as f:
-            index = json.load(f)
-        
         # Get index timestamp
         index_time = os.path.getmtime(index_path)
         changed_files = []
-        
-        # Check indexed files for changes
-        for rel_path, file_info in index.get('files', {}).items():
-            file_path = os.path.join(project_root, rel_path)
-            
-            # Skip if file no longer exists
-            if not os.path.exists(file_path):
+
+        # Parse DSL to get list of indexed files (F lines)
+        indexed = set()
+        try:
+            for line in Path(index_path).read_text(encoding='utf-8', errors='ignore').splitlines():
+                if line.startswith('F '):
+                    # Format: F path lang=... parsed=...
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        indexed.add(parts[1])
+        except Exception:
+            pass
+
+        root_path = Path(project_root)
+        code_extensions = {'.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.rs', '.java', '.rb', '.php', '.sh', '.bash'}
+
+        # Check indexed files for changes or removal
+        for rel_path in list(indexed):
+            file_path = root_path / rel_path
+            if not file_path.exists():
                 changed_files.append(rel_path)
                 continue
-            
-            # Check if file was modified after index
-            file_mtime = get_file_mtime(file_path)
-            if file_mtime > index_time:
-                # Skip if it was updated by hook (has updated_at timestamp)
-                if 'updated_at' in file_info:
-                    try:
-                        # Parse ISO format timestamp
-                        updated_at = datetime.fromisoformat(file_info['updated_at']).timestamp()
-                        # If hook update is recent, skip
-                        if abs(file_mtime - updated_at) < 2:  # 2 second tolerance
-                            continue
-                    except:
-                        pass
-                
+            if get_file_mtime(file_path) > index_time:
                 changed_files.append(rel_path)
-        
-        # Also scan for new files not in index
-        root_path = Path(project_root)
-        code_extensions = {'.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.rs', '.java', '.rb', '.php'}
-        
-        for file_path in root_path.rglob('*'):
-            if file_path.is_file() and file_path.suffix in code_extensions:
-                rel_path = str(file_path.relative_to(root_path))
-                
-                # Skip ignored directories
-                if any(part in {'.git', 'node_modules', '__pycache__', '.venv', 'venv'} 
-                       for part in file_path.parts):
+
+        # Detect new files not in index (prefer Git-aware listing)
+        repo = git_root(root_path)
+        scope_files = git_ls_unignored_files(repo, root_path) if repo is not None else None
+        if scope_files is not None:
+            for rel in scope_files:
+                if Path(rel).suffix not in code_extensions:
                     continue
-                
-                # If not in index and created after index, it's new
-                if rel_path not in index.get('files', {}) and get_file_mtime(file_path) > index_time:
-                    changed_files.append(rel_path)
-        
+                if str(rel) not in indexed and get_file_mtime(root_path / rel) > index_time:
+                    changed_files.append(str(rel))
+        else:
+            for file_path in root_path.rglob('*'):
+                if file_path.is_file() and file_path.suffix in code_extensions:
+                    rel_path = str(file_path.relative_to(root_path))
+                    if any(part in {'.git', '__pycache__', '.venv', 'venv'} for part in file_path.parts):
+                        continue
+                    if rel_path not in indexed and get_file_mtime(file_path) > index_time:
+                        changed_files.append(rel_path)
+
         return changed_files
-        
-    except Exception as e:
-        # If anything fails, return empty list
+    except Exception:
         return []
 
 

@@ -35,3 +35,4 @@ settings.json.backup*
 
 # Runtime configuration
 .python_cmd
+PROJECT_INDEX.dsl
