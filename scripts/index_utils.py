@@ -9,6 +9,7 @@ import fnmatch
 from pathlib import Path
 import subprocess
 from typing import Dict, List, Optional, Set, Tuple
+import json
 
 # What to ignore by default if Git isn't available
 IGNORE_DIRS = {
@@ -36,7 +37,9 @@ CODE_EXTENSIONS = {
     '.cs', '.sh', '.bash', '.sql', '.r', '.R', '.lua', '.m',
     '.ex', '.exs', '.jl', '.dart', '.vue', '.svelte',
     # Configuration and data files
-    '.json', '.html', '.css'
+    '.json', '.html', '.css',
+    # Smart contracts
+    '.sol'
 }
 
 # Markdown files to analyze
@@ -1252,6 +1255,465 @@ def get_language_name(extension: str) -> str:
     if extension in PARSEABLE_LANGUAGES:
         return PARSEABLE_LANGUAGES[extension]
     return extension[1:] if extension else 'unknown'
+
+
+# ---------- External Engines: ast-grep + ripgrep (fallback for Solidity) ----------
+
+# Map file extensions to ast-grep language aliases
+ASTGREP_LANG_BY_EXT: Dict[str, str] = {
+    '.py': 'python',
+    '.js': 'javascript',
+    '.jsx': 'javascript',
+    '.ts': 'typescript',
+    '.tsx': 'tsx',
+    '.go': 'go',
+    '.rs': 'rust',
+    '.java': 'java',
+    '.cs': 'csharp',
+    '.c': 'c',
+    '.h': 'c',
+    '.cc': 'cpp',
+    '.cpp': 'cpp',
+    '.cxx': 'cpp',
+    '.hpp': 'cpp',
+}
+
+
+def _which(cmd: str) -> Optional[str]:
+    try:
+        out = subprocess.run(['bash', '-lc', f'command -v {cmd}'], capture_output=True, text=True)
+        path = out.stdout.strip()
+        return path or None
+    except Exception:
+        return None
+
+
+def sg_cli() -> Optional[str]:
+    """Return ast-grep CLI name (sg or ast-grep) if available."""
+    return _which('sg') or _which('ast-grep')
+
+
+def rg_cli() -> Optional[str]:
+    """Return ripgrep CLI path if available."""
+    return _which('rg') or _which('ripgrep')
+
+
+def _astgrep_run(pattern: str, lang: str, file_path: Path, selector: Optional[str] = None) -> List[Dict]:
+    cli = sg_cli()
+    if not cli:
+        return []
+    try:
+        # Use stream JSON for efficiency
+        cmd = [cli, 'run', '-p', pattern, '-l', lang, '--json=stream', str(file_path)]
+        if selector:
+            cmd = [cli, 'run', '-p', pattern, '-l', lang, '--selector', selector, '--json=stream', str(file_path)]
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        matches = []
+        for line in proc.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                matches.append(json.loads(line))
+            except Exception:
+                continue
+        return matches
+    except Exception:
+        return []
+
+
+def _extract_name_sig_from_text(ext: str, kind: str, text: str) -> Optional[Tuple[str, str]]:
+    """Extract name and signature string from matched text.
+    kind: 'function' | 'class'
+    Returns (name, signature)
+    """
+    t = text.strip()
+    if ext == '.py':
+        if kind == 'function':
+            m = re.match(r'^def\s+([A-Za-z_]\w*)\s*\((.*?)\)\s*:', t)
+            if m:
+                name, params = m.groups()
+                return name, f'({params})'
+        elif kind == 'class':
+            m = re.match(r'^class\s+([A-Za-z_]\w*)(?:\s*\(([^)]*)\))?\s*:', t)
+            if m:
+                name, bases = m.groups()
+                sig = f'({bases})' if bases else ''
+                return name, sig
+    elif ext in ('.js', '.jsx', '.ts', '.tsx'):
+        if kind == 'function':
+            # function decl
+            m = re.match(r'^(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(([^)]*)\)', t)
+            if m:
+                name, params = m.groups()
+                return name, f'({params})'
+            # arrow function const name = (...) =>
+            m = re.match(r'^(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?\(([^)]*)\)\s*=>', t)
+            if m:
+                name, params = m.groups()
+                return name, f'({params})'
+        elif kind == 'class':
+            m = re.match(r'^(?:export\s+)?class\s+([A-Za-z_$][\w$]*)', t)
+            if m:
+                name = m.group(1)
+                return name, ''
+    elif ext == '.go':
+        if kind == 'function':
+            # func Name(params) [returns] {
+            m = re.match(r'^func\s+(?:\([^)]+\)\s*)?([A-Za-z_]\w*)\s*\(([^)]*)\)\s*([^\{]*)\{', t)
+            if m:
+                name, params, ret = m.groups()
+                sig = f'({params})'
+                ret = ret.strip()
+                if ret:
+                    sig += f' -> {ret.strip()}'
+                return name, sig
+    elif ext == '.rs':
+        if kind == 'function':
+            m = re.match(r'^fn\s+([A-Za-z_]\w*)\s*\(([^)]*)\)\s*(?:->\s*([^\{]+))?\s*\{', t)
+            if m:
+                name, params, ret = m.groups()
+                sig = f'({params})'
+                if ret:
+                    sig += f' -> {ret.strip()}'
+                return name, sig
+    elif ext in ('.java', '.cs'):
+        if kind == 'function':
+            # modifiers/annotations + return + name(params) { ... }
+            m = re.search(r'([A-Za-z_$][\w$]*)\s*\(([^)]*)\)\s*\{', t)
+            if m:
+                name, params = m.groups()
+                return name, f'({params})'
+        elif kind == 'class':
+            m = re.search(r'\bclass\s+([A-Za-z_$][\w$]*)', t)
+            if m:
+                return m.group(1), ''
+    elif ext in ('.c', '.h', '.cc', '.cpp', '.cxx', '.hpp'):
+        if kind == 'function':
+            m = re.search(r'([A-Za-z_~][\w$]*)\s*\(([^)]*)\)\s*\{', t)
+            if m:
+                name, params = m.groups()
+                return name, f'({params})'
+        elif ext in ('.cc', '.cpp', '.cxx', '.hpp') and kind == 'class':
+            m = re.search(r'\b(class|struct)\s+([A-Za-z_][\w$]*)', t)
+            if m:
+                return m.group(2), ''
+    return None
+
+
+def extract_with_astgrep(file_path: Path, content: str) -> Dict[str, Dict]:
+    """Use ast-grep to extract functions/classes for supported languages.
+    Returns structure like {'functions': {...}, 'classes': {...}} or empty dict if not applicable.
+    """
+    ext = file_path.suffix
+    lang = ASTGREP_LANG_BY_EXT.get(ext)
+    if not lang or not sg_cli():
+        return {}
+    functions: Dict[str, Dict] = {}
+    classes: Dict[str, Dict] = {}
+
+    # Python
+    if ext == '.py':
+        func_matches = _astgrep_run('def $FN($$$ARGS): $$$', 'python', file_path)
+        for m in func_matches:
+            text = m.get('text', '')
+            parsed = _extract_name_sig_from_text(ext, 'function', text)
+            if parsed:
+                name, sig = parsed
+                if name not in functions:
+                    functions[name] = {'signature': sig}
+        class_matches = _astgrep_run('class $C($$BASES): $$$', 'python', file_path) + \
+                        _astgrep_run('class $C: $$$', 'python', file_path)
+        for m in class_matches:
+            text = m.get('text', '')
+            parsed = _extract_name_sig_from_text(ext, 'class', text)
+            if parsed:
+                name, sig = parsed
+                if name not in classes:
+                    classes[name] = {'methods': {}}
+    # JS/TS/JSX/TSX
+    elif ext in ('.js', '.jsx', '.ts', '.tsx'):
+        func_matches = []
+        func_matches += _astgrep_run('function $FN($$$ARGS) { $$$ }', lang, file_path)
+        func_matches += _astgrep_run('function $FN($$$ARGS): $RET { $$$ }', lang, file_path)
+        func_matches += _astgrep_run('const $FN = ($$$ARGS) => { $$$ }', lang, file_path)
+        func_matches += _astgrep_run('const $FN = ($$$ARGS): $RET => { $$$ }', lang, file_path)
+        for m in func_matches:
+            text = m.get('text', '')
+            parsed = _extract_name_sig_from_text(ext, 'function', text)
+            if parsed:
+                name, sig = parsed
+                if name not in functions:
+                    functions[name] = {'signature': sig}
+        class_matches = _astgrep_run('class $C { $$$ }', lang, file_path)
+        for m in class_matches:
+            text = m.get('text', '')
+            parsed = _extract_name_sig_from_text(ext, 'class', text)
+            if parsed:
+                name, sig = parsed
+                if name not in classes:
+                    classes[name] = {'methods': {}}
+    elif ext == '.go':
+        # functions and methods
+        func_matches = []
+        func_matches += _astgrep_run('func $FN($$$ARGS) { $$$ }', 'go', file_path)
+        func_matches += _astgrep_run('func $FN($$$ARGS) $RET { $$$ }', 'go', file_path)
+        # methods with receiver
+        func_matches += _astgrep_run('func ($REC $T) $FN($$$ARGS) { $$$ }', 'go', file_path)
+        func_matches += _astgrep_run('func ($REC $T) $FN($$$ARGS) $RET { $$$ }', 'go', file_path)
+        for m in func_matches:
+            text = m.get('text', '')
+            parsed = _extract_name_sig_from_text(ext, 'function', text)
+            if parsed:
+                name, sig = parsed
+                if name not in functions:
+                    functions[name] = {'signature': sig}
+        result: Dict[str, Dict] = {'functions': functions, 'classes': classes}
+        if not functions:
+            result.pop('functions', None)
+        if not classes:
+            result.pop('classes', None)
+        return result
+    elif ext == '.rs':
+        func_matches = []
+        func_matches += _astgrep_run('fn $FN($$$ARGS) { $$$ }', 'rust', file_path)
+        func_matches += _astgrep_run('fn $FN($$$ARGS) -> $RET { $$$ }', 'rust', file_path)
+        # methods inside impl
+        func_matches += _astgrep_run('impl $T { fn $FN($$$ARGS) { $$$ } }', 'rust', file_path)
+        func_matches += _astgrep_run('impl $T { fn $FN($$$ARGS) -> $RET { $$$ } }', 'rust', file_path)
+        for m in func_matches:
+            text = m.get('text', '')
+            parsed = _extract_name_sig_from_text(ext, 'function', text)
+            if parsed:
+                name, sig = parsed
+                if name not in functions:
+                    functions[name] = {'signature': sig}
+        result: Dict[str, Dict] = {'functions': functions, 'classes': classes}
+        if not functions:
+            result.pop('functions', None)
+        if not classes:
+            result.pop('classes', None)
+        return result
+    elif ext == '.java':
+        # Classes with ranges
+        class_matches = _astgrep_run('class $C { $$$ }', 'java', file_path)
+        class_ranges: List[Tuple[str, int, int]] = []
+        for m in class_matches:
+            text = m.get('text', '')
+            parsed = _extract_name_sig_from_text(ext, 'class', text)
+            if parsed:
+                name, _ = parsed
+                r = m.get('range', {})
+                s = r.get('start', {}).get('line', 0)
+                e = r.get('end', {}).get('line', 0)
+                class_ranges.append((name, s, e))
+                classes.setdefault(name, {'methods': {}})
+        # Methods inside classes using selector
+        method_matches = _astgrep_run('class $C { $$$ }', 'java', file_path, selector='method_declaration')
+        for m in method_matches:
+            text = m.get('text', '')
+            parsed = _extract_name_sig_from_text(ext, 'function', text)
+            if not parsed:
+                continue
+            mname, sig = parsed
+            r = m.get('range', {})
+            sline = r.get('start', {}).get('line', 0)
+            eline = r.get('end', {}).get('line', 0)
+            # Find enclosing class by range
+            owner = None
+            for cname, cs, ce in class_ranges:
+                if cs <= sline <= ce:
+                    owner = cname
+            if owner:
+                classes.setdefault(owner, {'methods': {}})
+                if mname not in classes[owner]['methods']:
+                    classes[owner]['methods'][mname] = {'signature': sig}
+            else:
+                functions.setdefault(mname, {'signature': sig})
+        result: Dict[str, Dict] = {'functions': functions, 'classes': classes}
+        if not functions:
+            result.pop('functions', None)
+        if not classes:
+            result.pop('classes', None)
+        return result
+    elif ext == '.cs':
+        class_matches = _astgrep_run('class $C { $$$ }', 'csharp', file_path)
+        class_ranges: List[Tuple[str, int, int]] = []
+        for m in class_matches:
+            text = m.get('text', '')
+            parsed = _extract_name_sig_from_text(ext, 'class', text)
+            if parsed:
+                name, _ = parsed
+                r = m.get('range', {})
+                s = r.get('start', {}).get('line', 0)
+                e = r.get('end', {}).get('line', 0)
+                class_ranges.append((name, s, e))
+                classes.setdefault(name, {'methods': {}})
+        method_matches = _astgrep_run('class $C { $$$ }', 'csharp', file_path, selector='method_declaration')
+        for m in method_matches:
+            text = m.get('text', '')
+            parsed = _extract_name_sig_from_text(ext, 'function', text)
+            if not parsed:
+                continue
+            mname, sig = parsed
+            r = m.get('range', {})
+            sline = r.get('start', {}).get('line', 0)
+            eline = r.get('end', {}).get('line', 0)
+            owner = None
+            for cname, cs, ce in class_ranges:
+                if cs <= sline <= ce:
+                    owner = cname
+            if owner:
+                classes.setdefault(owner, {'methods': {}})
+                if mname not in classes[owner]['methods']:
+                    classes[owner]['methods'][mname] = {'signature': sig}
+            else:
+                functions.setdefault(mname, {'signature': sig})
+        result: Dict[str, Dict] = {'functions': functions, 'classes': classes}
+        if not functions:
+            result.pop('functions', None)
+        if not classes:
+            result.pop('classes', None)
+        return result
+    elif ext in ('.c', '.h'):
+        func_matches = _astgrep_run('$_RET $FN($$$ARGS) { $$$ }', 'c', file_path)
+        for m in func_matches:
+            text = m.get('text', '')
+            parsed = _extract_name_sig_from_text(ext, 'function', text)
+            if parsed:
+                name, sig = parsed
+                functions.setdefault(name, {'signature': sig})
+        result: Dict[str, Dict] = {'functions': functions}
+        if not functions:
+            result.pop('functions', None)
+        return result
+    elif ext in ('.cc', '.cpp', '.cxx', '.hpp'):
+        class_matches = []
+        class_matches += _astgrep_run('class $C { $$$ }', 'cpp', file_path)
+        class_matches += _astgrep_run('struct $C { $$$ }', 'cpp', file_path)
+        class_ranges: List[Tuple[str, int, int]] = []
+        for m in class_matches:
+            text = m.get('text', '')
+            parsed = _extract_name_sig_from_text(ext, 'class', text)
+            if parsed:
+                name, _ = parsed
+                r = m.get('range', {})
+                s = r.get('start', {}).get('line', 0)
+                e = r.get('end', {}).get('line', 0)
+                class_ranges.append((name, s, e))
+                classes.setdefault(name, {'methods': {}})
+        # Methods inside class bodies using selector
+        method_matches = _astgrep_run('class $C { $$$ }', 'cpp', file_path, selector='function_definition')
+        # Also for struct
+        method_matches += _astgrep_run('struct $C { $$$ }', 'cpp', file_path, selector='function_definition')
+        for m in method_matches:
+            text = m.get('text', '')
+            parsed = _extract_name_sig_from_text(ext, 'function', text)
+            if not parsed:
+                continue
+            mname, sig = parsed
+            r = m.get('range', {})
+            sline = r.get('start', {}).get('line', 0)
+            owner = None
+            for cname, cs, ce in class_ranges:
+                if cs <= sline <= ce:
+                    owner = cname
+            if owner:
+                classes.setdefault(owner, {'methods': {}})
+                if mname not in classes[owner]['methods']:
+                    classes[owner]['methods'][mname] = {'signature': sig}
+            else:
+                functions.setdefault(mname, {'signature': sig})
+        result: Dict[str, Dict] = {'functions': functions, 'classes': classes}
+        if not functions:
+            result.pop('functions', None)
+        if not classes:
+            result.pop('classes', None)
+        return result
+    else:
+        return {}
+
+    result: Dict[str, Dict] = {'functions': functions, 'classes': classes}
+    # Clean empties
+    if not functions:
+        result.pop('functions', None)
+    if not classes:
+        result.pop('classes', None)
+    return result
+
+
+def extract_solidity_with_rg(file_path: Path) -> Dict[str, Dict]:
+    """Extract Solidity contracts and functions using ripgrep as fallback."""
+    rg = rg_cli()
+    if not rg:
+        return {}
+    functions: Dict[str, Dict] = {}
+    classes: Dict[str, Dict] = {}
+    try:
+        # Contracts/interfaces/libraries
+        proc_c = subprocess.run(
+            [rg, '-nU', '-e', r'^\s*(?:contract|interface|library)\s+([A-Za-z_]\w*)', str(file_path)],
+            capture_output=True, text=True
+        )
+        for line in proc_c.stdout.splitlines():
+            m = re.search(r'(?:contract|interface|library)\s+([A-Za-z_]\w*)', line)
+            if m:
+                name = m.group(1)
+                classes.setdefault(name, {'methods': {}})
+        # Functions/constructors
+        proc_f = subprocess.run(
+            [rg, '-nU', '-P', '-e', r'^\s*(?:function|constructor)\s*([A-Za-z_]\w*)?\s*\(([^)]*)\)\s*(?:[a-z\s]*)?(?:returns\s*\(([^)]*)\))?', str(file_path)],
+            capture_output=True, text=True
+        )
+        for line in proc_f.stdout.splitlines():
+            m = re.search(r'(?:function|constructor)\s*([A-Za-z_]\w*)?\s*\(([^)]*)\)\s*(?:[a-z\s]*)?(?:returns\s*\(([^)]*)\))?', line)
+            if m:
+                name = m.group(1) or 'constructor'
+                params = m.group(2) or ''
+                ret = m.group(3)
+                sig = f'({params})'
+                if ret:
+                    sig += f' returns ({ret})'
+                if name not in functions:
+                    functions[name] = {'signature': sig}
+    except Exception:
+        pass
+    result: Dict[str, Dict] = {'functions': functions, 'classes': classes}
+    if not functions:
+        result.pop('functions', None)
+    if not classes:
+        result.pop('classes', None)
+    return result
+
+
+def extract_signatures_auto(file_path: Path, content: str) -> Dict[str, Dict]:
+    """Primary: ast-grep (sg/ast-grep); Solidity falls back to ripgrep;
+    Otherwise fallback to built-in extractors.
+    """
+    ext = file_path.suffix
+    # Solidity
+    if ext == '.sol':
+        via_rg = extract_solidity_with_rg(file_path)
+        if via_rg:
+            return via_rg
+        return {}
+    # ast-grep if available and supported
+    via_sg = extract_with_astgrep(file_path, content)
+    if via_sg:
+        return via_sg
+    # Built-in fallback
+    if ext == '.py':
+        return extract_python_signatures(content)
+    if ext in {'.js', '.ts', '.jsx', '.tsx'}:
+        return extract_javascript_signatures(content)
+    if ext in {'.sh', '.bash'}:
+        return extract_shell_signatures(content)
+    return {}
 
 
 # Global cache for gitignore patterns

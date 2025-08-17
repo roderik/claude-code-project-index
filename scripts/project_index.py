@@ -31,6 +31,7 @@ from index_utils import (
     infer_directory_purpose, get_language_name, should_index_file,
     git_root, git_ls_unignored_files
 )
+from index_utils import extract_signatures_auto
 
 # Limits to keep it fast and simple
 MAX_FILES = 10000
@@ -232,37 +233,21 @@ def build_index(root_dir: str) -> Tuple[Dict, int]:
         if file_purpose:
             file_info['purpose'] = file_purpose
 
-        # Try to parse if we support this language
-        if file_path.suffix in PARSEABLE_LANGUAGES:
-            try:
-                content = file_path.read_text(encoding='utf-8', errors='ignore')
-
-                # Extract based on language
-                if file_path.suffix == '.py':
-                    extracted = extract_python_signatures(content)
-                elif file_path.suffix in {'.js', '.ts', '.jsx', '.tsx'}:
-                    extracted = extract_javascript_signatures(content)
-                elif file_path.suffix in {'.sh', '.bash'}:
-                    extracted = extract_shell_signatures(content)
-                else:
-                    extracted = {'functions': {}, 'classes': {}}
-
-                # Only add if we found something
-                if extracted['functions'] or extracted['classes']:
-                    file_info.update(extracted)
-                    file_info['parsed'] = True
-
+        # Try ast-grep / rg(solidity) / built-in
+        try:
+            content = file_path.read_text(encoding='utf-8', errors='ignore')
+            extracted = extract_signatures_auto(file_path, content)
+            if extracted.get('functions') or extracted.get('classes'):
+                file_info.update(extracted)
+                file_info['parsed'] = True
                 # Update stats
-                lang_key = PARSEABLE_LANGUAGES[file_path.suffix]
+                lang_key = PARSEABLE_LANGUAGES.get(file_path.suffix, language)
                 index['stats']['fully_parsed'][lang_key] = \
                     index['stats']['fully_parsed'].get(lang_key, 0) + 1
-
-            except Exception as e:
-                # Parse error - just list the file
+            else:
                 index['stats']['listed_only'][language] = \
                     index['stats']['listed_only'].get(language, 0) + 1
-        else:
-            # Language not supported for parsing
+        except Exception:
             index['stats']['listed_only'][language] = \
                 index['stats']['listed_only'].get(language, 0) + 1
 
